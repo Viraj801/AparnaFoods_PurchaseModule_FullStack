@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React, { useState, useMemo, useEffect } from 'react';
+import Login from './Login';
 import {
     LayoutDashboard,
     FileText,
@@ -136,9 +137,27 @@ const formatINR = (val) => {
 
 
 export default function App() {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('af_token') : null;
+    if (!token) {
+        return <Login />;
+    }
      //https://127.0.0.1:7301/api/PurchaseOrders
 
     const API_BASE = 'https://127.0.0.1:7301/api/purchaseorders';
+    // helper to attach Authorization header from localStorage token
+    const authFetch = async (input, init = {}) => {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('af_token') : null;
+        const headers = new Headers(init.headers || {});
+        if (token) headers.set('Authorization', `Bearer ${token}`);
+        return fetch(input, { ...init, headers });
+    };
+    const logout = () => {
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('af_token');
+            // optionally clear other app state
+            window.location.reload();
+        }
+    };
     const [activeTab, setActiveTab] = useState('entry'); // 'dashboard', 'entry', 'history'
     const [poList, setPoList] = useState(INITIAL_POS);
     const [toastMessage, setToastMessage] = useState(null);
@@ -235,7 +254,7 @@ export default function App() {
             const numericId = parseInt(poId.replace('BPO-', ''), 10);
             (async () => {
                 try {
-                    const res = await fetch(`${API_BASE}/${numericId}`, {
+                    const res = await authFetch(`${API_BASE}/${numericId}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ ...mapUiPoToApi(updated) })
@@ -266,7 +285,7 @@ export default function App() {
             const numericId = parseInt(poId.replace('BPO-', ''), 10);
             (async () => {
                 try {
-                    const res = await fetch(`${API_BASE}/${numericId}`, {
+                    const res = await authFetch(`${API_BASE}/${numericId}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ ...mapUiPoToApi(updated) })
@@ -369,7 +388,7 @@ export default function App() {
     useEffect(() => {
         const fetchPOs = async () => {
             try {
-                const res = await fetch(API_BASE);
+                const res = await authFetch(API_BASE);
                 if (!res.ok) throw new Error('Failed to fetch');
                 const data = await res.json();
                 const mapped = data.map(mapApiPoToUi);
@@ -516,9 +535,10 @@ export default function App() {
         // If editing an existing backend PO, perform PUT; otherwise POST to create new
         (async () => {
             try {
+                // placeholder: no-op to ensure patch context alignment
                 if (editingPoId && typeof editingPoId === 'string' && editingPoId.startsWith('BPO-')) {
                     const numericId = parseInt(editingPoId.replace('BPO-', ''), 10);
-                    const res = await fetch(`${API_BASE}/${numericId}`, {
+                    const res = await authFetch(`${API_BASE}/${numericId}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
@@ -533,7 +553,7 @@ export default function App() {
                 }
 
                 // create new
-                const res = await fetch(API_BASE, {
+                const res = await authFetch(API_BASE, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -585,8 +605,8 @@ export default function App() {
         if (typeof id === 'string' && id.startsWith('BPO-')) {
             const numericId = parseInt(id.replace('BPO-', ''), 10);
             (async () => {
-                try {
-                    const res = await fetch(`${API_BASE}/${numericId}`, { method: 'DELETE' });
+                    try {
+                    const res = await authFetch(`${API_BASE}/${numericId}`, { method: 'DELETE' });
                     if (!res.ok) throw new Error('delete failed');
                     setPoList(prev => prev.filter(p => p.id !== id));
                     showToast('Purchase Order removed from server records.');
@@ -976,6 +996,15 @@ export default function App() {
                                     <RefreshCw className="w-4 h-4" />
                                     <span>Update PO</span>
                                 </button>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                            <button
+                                onClick={logout}
+                                title="Sign out"
+                                className="px-3 py-1 text-sm font-semibold bg-red-600 text-white rounded hover:bg-red-700 transition"
+                            >
+                                Logout
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1774,7 +1803,7 @@ export default function App() {
                                                                 if (typeof po.id === 'string' && po.id.startsWith('BPO-')) {
                                                                     const numericId = parseInt(po.id.replace('BPO-', ''), 10);
                                                                     try {
-                                                                        const resp = await fetch(`${API_BASE}/${numericId}`);
+                                                                        const resp = await authFetch(`${API_BASE}/${numericId}`);
                                                                         if (resp.ok) {
                                                                             const serverPo = await resp.json();
                                                                             setViewingPo(mapApiPoToUi(serverPo));

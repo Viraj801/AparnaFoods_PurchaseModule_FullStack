@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using AparnaFoods.Api.Data;
 using AparnaFoods.Api.Models;
@@ -8,6 +9,7 @@ namespace AparnaFoods.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class PurchaseOrdersController : ControllerBase
     {
         private readonly AppDbContext _context;

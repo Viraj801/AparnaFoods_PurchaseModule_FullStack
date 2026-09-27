@@ -133,12 +133,17 @@ const formatINR = (val) => {
     return '₹ ' + num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
+
+
 export default function App() {
-    const API_BASE = 'http://127.0.0.1:5200/api/purchaseorders';
+     //https://127.0.0.1:7301/api/PurchaseOrders
+
+    const API_BASE = 'https://127.0.0.1:7301/api/purchaseorders';
     const [activeTab, setActiveTab] = useState('entry'); // 'dashboard', 'entry', 'history'
     const [poList, setPoList] = useState(INITIAL_POS);
     const [toastMessage, setToastMessage] = useState(null);
     const [viewingPo, setViewingPo] = useState(null);
+    const [editingPoId, setEditingPoId] = useState(null); // UI id like 'BPO-123' when editing existing server PO
     const [filterQuery, setFilterQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('ALL');
 
@@ -173,6 +178,113 @@ export default function App() {
             rate: 3850
         }
     ]);
+    const [selectedPoToEdit, setSelectedPoToEdit] = useState('');
+    const [selectedPoToProcess, setSelectedPoToProcess] = useState('');
+
+    // Load an existing PO into the entry form for editing
+    const loadPoForEdit = (poId) => {
+        const po = poList.find(p => p.id === poId);
+        if (!po) {
+            showToast('Could not locate the selected PO.');
+            return;
+        }
+
+        // Populate formData and items for editing
+        setFormData({
+            poNumber: po.poNumber || '',
+            poDate: po.poDate || '',
+            party: po.party || '',
+            purchasedBy: po.purchasedBy || 'Aparna Foods Purchase Desk',
+            broker: po.broker || '',
+            brokerage: po.brokerage || '',
+            paymentTerms: po.paymentTerms || '15 Days',
+            danaCut: po.danaCut || '',
+            cd: po.cd || '',
+            freightPartyOrSelf: po.freightPartyOrSelf || 'Party',
+            bardana: po.bardana || '',
+            remarks: po.remarks || '',
+            village: po.village || '',
+            farmerName: po.farmerName || '',
+            mobileNumber: po.mobileNumber || '',
+            company: po.company || 'Aparna Foods Ltd.',
+            status: po.status || 'Pending'
+        });
+
+        setItems((po.items || []).map(it => ({
+            id: it.id || Date.now() + Math.random(),
+            variantName: it.variantName,
+            itemType: it.itemType || 'Rice',
+            bags: it.bags || 0,
+            weight: it.weight || 0,
+            rate: it.rate || 0
+        })));
+
+        setEditingPoId(po.id);
+        setActiveTab('entry');
+        showToast(`Loaded ${po.poNumber} for editing.`);
+    };
+
+    // Mark a PO as processed (local update)
+    const processPo = (poId) => {
+        if (!poId) { showToast('Select a valid PO to process.'); return; }
+        const po = poList.find(p => p.id === poId);
+        if (!po) { showToast('Select a valid PO to process.'); return; }
+        const updated = { ...po, status: 'Processed' };
+        // If this is backend-saved PO, send update to server
+        if (typeof poId === 'string' && poId.startsWith('BPO-')) {
+            const numericId = parseInt(poId.replace('BPO-', ''), 10);
+            (async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/${numericId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ...mapUiPoToApi(updated) })
+                    });
+                    if (!res.ok) throw new Error('Failed to update status on server');
+                    const updatedFromServer = await res.json();
+                    setPoList(prev => prev.map(p => p.id === poId ? mapApiPoToUi(updatedFromServer) : p));
+                    showToast(`Purchase Order ${po.poNumber} marked as Processed on server.`);
+                } catch (err) {
+                    setPoList(prev => prev.map(p => p.id === poId ? updated : p));
+                    showToast(`Purchase Order ${po.poNumber} marked as Processed (local fallback).`);
+                }
+            })();
+        } else {
+            setPoList(prev => prev.map(p => p.id === poId ? updated : p));
+            showToast(`Purchase Order ${po.poNumber} marked as Processed (local).`);
+        }
+    };
+
+    // Verify a PO (local update)
+    const verifyPo = (poId) => {
+        if (!poId) { showToast('Select a valid PO to verify.'); return; }
+        const po = poList.find(p => p.id === poId);
+        if (!po) { showToast('Select a valid PO to verify.'); return; }
+        const updated = { ...po, status: 'Verified' };
+        // Persist status to backend for backend-saved POs
+        if (typeof poId === 'string' && poId.startsWith('BPO-')) {
+            const numericId = parseInt(poId.replace('BPO-', ''), 10);
+            (async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/${numericId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ...mapUiPoToApi(updated) })
+                    });
+                    if (!res.ok) throw new Error('Failed to update status on server');
+                    const updatedFromServer = await res.json();
+                    setPoList(prev => prev.map(p => p.id === poId ? mapApiPoToUi(updatedFromServer) : p));
+                    showToast(`Purchase Order ${po.poNumber} marked as Verified on server.`);
+                } catch (err) {
+                    setPoList(prev => prev.map(p => p.id === poId ? updated : p));
+                    showToast(`Purchase Order ${po.poNumber} marked as Verified (local fallback).`);
+                }
+            })();
+        } else {
+            setPoList(prev => prev.map(p => p.id === poId ? updated : p));
+            showToast(`Purchase Order ${po.poNumber} marked as Verified (local).`);
+        }
+    };
 
     const showToast = (msg) => {
         setToastMessage(msg);
@@ -223,6 +335,36 @@ export default function App() {
         };
     };
 
+    // Map frontend UI PO shape back to API DTO shape for PUT/POST
+    const mapUiPoToApi = (uiPo) => {
+        return {
+            poNumber: uiPo.poNumber,
+            poDate: uiPo.poDate,
+            partyName: uiPo.party,
+            purchasedBy: uiPo.purchasedBy,
+            broker: uiPo.broker,
+            brokerage: Number(uiPo.brokerage) || 0,
+            status: uiPo.status || 'Pending',
+            paymentTerms: uiPo.paymentTerms,
+            danaCut: uiPo.danaCut,
+            cd: uiPo.cd,
+            freightPartyOrSelf: uiPo.freightPartyOrSelf,
+            remarks: uiPo.remarks,
+            bardana: uiPo.bardana,
+            village: uiPo.village,
+            farmerName: uiPo.farmerName,
+            mobileNumber: uiPo.mobileNumber,
+            company: uiPo.company,
+            items: (uiPo.items || []).map(it => ({
+                variantName: it.variantName,
+                itemType: it.itemType,
+                noOfBags: Number(it.bags) || 0,
+                weightInQtl: Number(it.weight) || 0,
+                ratePerQtl: Number(it.rate) || 0
+            }))
+        };
+    };
+
     // Fetch PO list from backend on mount (fall back to local data on error)
     useEffect(() => {
         const fetchPOs = async () => {
@@ -231,10 +373,13 @@ export default function App() {
                 if (!res.ok) throw new Error('Failed to fetch');
                 const data = await res.json();
                 const mapped = data.map(mapApiPoToUi);
-                setPoList(prev => [...mapped, ...prev]);
+                // Prefer server data; fall back to initial sample data if empty
+                if (mapped && mapped.length > 0) setPoList(mapped);
+                else setPoList(INITIAL_POS);
             } catch (err) {
                 // keep initial local data
                 console.warn('Could not fetch PO list from API:', err);
+                setPoList(INITIAL_POS);
             }
         };
         fetchPOs();
@@ -348,6 +493,7 @@ export default function App() {
             purchasedBy: formData.purchasedBy,
             broker: formData.broker,
             brokerage: Number(formData.brokerage) || 0,
+            status: formData.status || 'Pending',
             paymentTerms: formData.paymentTerms,
             danaCut: formData.danaCut,
             cd: formData.cd,
@@ -367,9 +513,26 @@ export default function App() {
             }))
         };
 
-        // POST to backend and update UI with returned record. If API fails, fall back to local-only save.
+        // If editing an existing backend PO, perform PUT; otherwise POST to create new
         (async () => {
             try {
+                if (editingPoId && typeof editingPoId === 'string' && editingPoId.startsWith('BPO-')) {
+                    const numericId = parseInt(editingPoId.replace('BPO-', ''), 10);
+                    const res = await fetch(`${API_BASE}/${numericId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!res.ok) throw new Error('API error on update');
+                    const updated = await res.json();
+                    const uiPo = mapApiPoToUi(updated);
+                    setPoList(prev => prev.map(p => p.id === editingPoId ? uiPo : p));
+                    showToast(`Purchase Order ${uiPo.poNumber} updated on server.`);
+                    setEditingPoId(null);
+                    return;
+                }
+
+                // create new
                 const res = await fetch(API_BASE, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -381,18 +544,25 @@ export default function App() {
                 setPoList(prev => [uiPo, ...prev]);
                 showToast(`Purchase Order ${uiPo.poNumber} saved to server.`);
             } catch (err) {
-                // fallback local save
-                const newPO = {
-                    id: `PO-${Date.now().toString().slice(-4)}`,
-                    ...formData,
-                    brokerage: Number(formData.brokerage) || 0,
-                    items: calculatedItems,
-                    totalBags: totals.bags,
-                    totalWeight: Number(totals.weight.toFixed(2)),
-                    totalAmount: Number(totals.amount.toFixed(2))
-                };
-                setPoList(prev => [newPO, ...prev]);
-                showToast(`Purchase Order ${newPO.poNumber} created locally (server unavailable).`);
+                // fallback local save/update
+                if (editingPoId) {
+                    // update local entry
+                    setPoList(prev => prev.map(p => p.id === editingPoId ? ({ ...p, ...formData, items: calculatedItems, totalBags: totals.bags, totalWeight: Number(totals.weight.toFixed(2)), totalAmount: Number(totals.amount.toFixed(2)) }) : p));
+                    showToast(`Purchase Order ${formData.poNumber} updated locally (server unavailable).`);
+                    setEditingPoId(null);
+                } else {
+                    const newPO = {
+                        id: `PO-${Date.now().toString().slice(-4)}`,
+                        ...formData,
+                        brokerage: Number(formData.brokerage) || 0,
+                        items: calculatedItems,
+                        totalBags: totals.bags,
+                        totalWeight: Number(totals.weight.toFixed(2)),
+                        totalAmount: Number(totals.amount.toFixed(2))
+                    };
+                    setPoList(prev => [newPO, ...prev]);
+                    showToast(`Purchase Order ${newPO.poNumber} created locally (server unavailable).`);
+                }
             }
         })();
 
@@ -488,6 +658,246 @@ export default function App() {
                 </div>
             )}
 
+                {/* ========================================================= */}
+                {/* TAB: PROCESS PURCHASE ORDERS                             */}
+                {/* ========================================================= */}
+                {activeTab === 'process' && (
+                    <div className="space-y-5">
+                        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-2 border-b border-slate-200">
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                    <Sparkles className="w-5 h-5 text-emerald-600" />
+                                    Process Purchase Orders
+                                </h2>
+                                <p className="text-xs text-slate-500">Select a Purchase Order to inspect, verify, or mark as processed.</p>
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                                <select
+                                    value={selectedPoToProcess}
+                                    onChange={(e) => setSelectedPoToProcess(e.target.value)}
+                                    className="text-xs py-1.5 px-2.5 border border-slate-300 rounded-md bg-white focus:ring-1 focus:ring-emerald-500 outline-none"
+                                >
+                                    <option value="">-- Select PO --</option>
+                                    {poList.map(p => (
+                                        <option key={p.id} value={p.id}>{`${p.poNumber} — ${p.party || '—'}`}</option>
+                                    ))}
+                                </select>
+                                <button
+                                    onClick={() => setSelectedPoToProcess('')}
+                                    className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 border border-slate-200 rounded hover:bg-slate-200 transition"
+                                >
+                                    Clear
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Large PO preview area */}
+                        <div className="bg-white rounded-lg shadow-sm p-6">
+                            <div className="bg-slate-50 min-h-[420px] p-4 rounded">
+                                {selectedPoToProcess ? (
+                                    (() => {
+                                        const po = poList.find(p => p.id === selectedPoToProcess);
+                                        if (!po) return <div className="text-center text-sm text-slate-500">Selected PO not found.</div>;
+                                        return (
+                                            <div className="space-y-6">
+                                                {/* Order Header (styled like entry form) */}
+                                                <div className="bg-white rounded-lg border border-emerald-600 shadow-sm overflow-hidden">
+                                                    <div className="bg-amber-100/70 border-b border-amber-200 px-4 py-2 flex items-center justify-between">
+                                                        <span className="text-xs font-bold uppercase tracking-wider text-amber-900">Order Header & Master Information</span>
+                                                        <span className="text-xs font-mono font-semibold text-slate-600">STATUS: <span className="text-emerald-700">{po.status}</span></span>
+                                                    </div>
+                                                    <div className="p-4 sm:p-5 space-y-4">
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
+                                                            <div className="sm:col-span-2">
+                                                                <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">Party</label>
+                                                                <div className="w-full text-xs px-2.5 py-2 border border-slate-300 rounded bg-white text-slate-800">{po.party}</div>
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">PO Number</label>
+                                                                <div className="w-full text-xs px-2.5 py-2 border border-emerald-300 bg-emerald-50/50 font-mono font-semibold text-emerald-900 rounded">{po.poNumber}</div>
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">PO Date</label>
+                                                                <div className="w-full text-xs px-2.5 py-2 border border-slate-300 rounded text-slate-700">{po.poDate}</div>
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">Purchased By</label>
+                                                                <div className="w-full text-xs px-2.5 py-2 border border-slate-300 rounded text-slate-700">{po.purchasedBy}</div>
+                                                            </div>
+
+                                                            <div>
+                                                                <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">Broker</label>
+                                                                <div className="w-full text-xs px-2.5 py-2 border border-slate-300 rounded text-slate-700">{po.broker || '—'}</div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
+                                                            <div>
+                                                                <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">Payment Terms</label>
+                                                                <div className="text-xs px-2.5 py-2 border border-slate-300 rounded">{po.paymentTerms || '—'}</div>
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">Dana Cut</label>
+                                                                <div className="text-xs px-2.5 py-2 border border-slate-300 rounded">{po.danaCut || '—'}</div>
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">CD (Cash Discount)</label>
+                                                                <div className="text-xs px-2.5 py-2 border border-slate-300 rounded">{po.cd || '—'}</div>
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">Freight Party/Self</label>
+                                                                <div className="text-xs px-2.5 py-2 border border-slate-300 rounded">{po.freightPartyOrSelf || '—'}</div>
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">Bardana</label>
+                                                                <div className="text-xs px-2.5 py-2 border border-slate-300 rounded">{po.bardana || '—'}</div>
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">Brokerage (₹)</label>
+                                                                <div className="text-xs px-2.5 py-2 border border-slate-300 rounded">{formatINR(po.brokerage || 0)}</div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
+                                                            <div>
+                                                                <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">Village / Tehsil</label>
+                                                                <div className="text-xs px-2.5 py-2 border border-slate-300 rounded">{po.village || '—'}</div>
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">Farmer / Grower Name</label>
+                                                                <div className="text-xs px-2.5 py-2 border border-slate-300 rounded">{po.farmerName || '—'}</div>
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">Mobile Number</label>
+                                                                <div className="text-xs px-2.5 py-2 border border-slate-300 rounded">{po.mobileNumber || '—'}</div>
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">Company</label>
+                                                                <div className="text-xs px-2.5 py-2 border border-slate-300 rounded">{po.company || '—'}</div>
+                                                            </div>
+                                                            <div className="sm:col-span-2">
+                                                                <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">Remarks</label>
+                                                                <div className="text-xs px-2.5 py-2 border border-slate-300 rounded">{po.remarks || '—'}</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Item Section (read-only) */}
+                                                <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+                                                    <div className="bg-emerald-800 text-white px-4 py-3 flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <h3 className="text-sm font-semibold">Item Section</h3>
+                                                            <span className="text-xs bg-emerald-700/30 px-2 py-0.5 rounded">{(po.items||[]).length} Row{(po.items||[]).length>1?'s':''}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="p-4 overflow-x-auto">
+                                                        <table className="w-full text-left text-sm border-collapse">
+                                                            <thead>
+                                                                <tr className="bg-amber-100 text-slate-700 text-xs border-b border-slate-200">
+                                                                    <th className="py-2 px-3">#</th>
+                                                                    <th className="py-2 px-3">Variant Name (Preset or Custom)</th>
+                                                                    <th className="py-2 px-3">Item Type</th>
+                                                                    <th className="py-2 px-3 text-right">No of Bags</th>
+                                                                    <th className="py-2 px-3 text-right">Weight (in Qtl)</th>
+                                                                    <th className="py-2 px-3 text-right">Rate (per Qtl)</th>
+                                                                    <th className="py-2 px-3 text-right">Amount (₹)</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {po.items?.map((it, idx) => (
+                                                                    <tr key={idx} className="border-b border-slate-100">
+                                                                        <td className="py-3 px-3">{idx+1}</td>
+                                                                        <td className="py-3 px-3">{it.variantName}</td>
+                                                                        <td className="py-3 px-3">{it.itemType}</td>
+                                                                        <td className="py-3 px-3 text-right font-mono">{it.bags}</td>
+                                                                        <td className="py-3 px-3 text-right font-mono">{it.weight}</td>
+                                                                        <td className="py-3 px-3 text-right font-mono">{formatINR(it.rate)}</td>
+                                                                        <td className="py-3 px-3 text-right font-mono">{formatINR(it.amount)}</td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                            <tfoot>
+                                                                <tr className="bg-amber-50 font-bold text-slate-800">
+                                                                    <td className="py-3 px-3">TOTAL SUMMARY :</td>
+                                                                    <td></td>
+                                                                    <td className="text-right py-3 px-3">{po.totalBags} Bags</td>
+                                                                    <td className="text-right py-3 px-3">{po.totalWeight} Qtl</td>
+                                                                    <td></td>
+                                                                    <td className="text-right py-3 px-3">Avg: 0.00 /Qtl</td>
+                                                                    <td className="text-right py-3 px-3">{formatINR(po.totalAmount)}</td>
+                                                                </tr>
+                                                            </tfoot>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()
+                                ) : (
+                                    <div className="h-full flex items-center justify-center text-slate-400">Select a PO from the dropdown to view details.</div>
+                                )}
+                            </div>
+
+                            {/* Action buttons */}
+                            <div className="mt-4 flex justify-end space-x-3">
+                                <button
+                                    onClick={() => verifyPo(selectedPoToProcess)}
+                                    disabled={!selectedPoToProcess}
+                                    className="px-4 py-2 text-sm font-semibold bg-amber-500 text-white rounded hover:opacity-95 disabled:opacity-50"
+                                >
+                                    Verify Order
+                                </button>
+                                <button
+                                    onClick={() => processPo(selectedPoToProcess)}
+                                    disabled={!selectedPoToProcess}
+                                    className="px-4 py-2 text-sm font-semibold bg-emerald-700 text-white rounded hover:bg-emerald-800 disabled:opacity-50"
+                                >
+                                    Mark as Processed
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ========================================================= */}
+                {/* TAB: UPDATE PURCHASE ORDERS                             */}
+                {/* ========================================================= */}
+                {activeTab === 'update' && (
+                    <div className="space-y-5">
+                        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-2 border-b border-slate-200">
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                    <RefreshCw className="w-5 h-5 text-emerald-600" />
+                                    Update Purchase Order
+                                </h2>
+                                <p className="text-xs text-slate-500">Load an existing PO into the entry sheet to edit and save back to server.</p>
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                                <select
+                                    value={selectedPoToEdit}
+                                    onChange={(e) => setSelectedPoToEdit(e.target.value)}
+                                    className="text-xs py-1.5 px-2.5 border border-slate-300 rounded-md bg-white focus:ring-1 focus:ring-emerald-500 outline-none"
+                                >
+                                    <option value="">-- Select PO to Edit --</option>
+                                    {poList.map(p => (
+                                        <option key={p.id} value={p.id}>{`${p.poNumber} — ${p.party || '—'}`}</option>
+                                    ))}
+                                </select>
+                                <button
+                                    onClick={() => selectedPoToEdit ? loadPoForEdit(selectedPoToEdit) : showToast('Please choose a PO to load.')}
+                                    className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-700 rounded hover:bg-emerald-800 transition"
+                                >
+                                    Load into Entry
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
             {/* Top Header */}
             <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -533,16 +943,39 @@ export default function App() {
                                 <span>Analytics Dashboard</span>
                             </button>
 
-                            <button
-                                onClick={() => setActiveTab('history')}
-                                className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition ${activeTab === 'history'
-                                        ? 'bg-emerald-700 text-white shadow-sm'
-                                        : 'text-slate-600 hover:text-slate-900'
-                                    }`}
-                            >
-                                <History className="w-4 h-4" />
-                                <span>Order History ({poList.length})</span>
-                            </button>
+                                <button
+                                    onClick={() => setActiveTab('history')}
+                                    className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition ${activeTab === 'history'
+                                            ? 'bg-emerald-700 text-white shadow-sm'
+                                            : 'text-slate-600 hover:text-slate-900'
+                                        }`}
+                                >
+                                    <History className="w-4 h-4" />
+                                    <span>Order History ({poList.length})</span>
+                                </button>
+
+                                {/* New: PO Process & Update actions in the nav */}
+                                <button
+                                    onClick={() => setActiveTab('process')}
+                                    className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition ${activeTab === 'process'
+                                            ? 'bg-emerald-700 text-white shadow-sm'
+                                            : 'text-slate-600 hover:text-slate-900'
+                                        }`}
+                                >
+                                    <Sparkles className="w-4 h-4" />
+                                    <span>Process PO</span>
+                                </button>
+
+                                <button
+                                    onClick={() => setActiveTab('update')}
+                                    className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition ${activeTab === 'update'
+                                            ? 'bg-emerald-700 text-white shadow-sm'
+                                            : 'text-slate-600 hover:text-slate-900'
+                                        }`}
+                                >
+                                    <RefreshCw className="w-4 h-4" />
+                                    <span>Update PO</span>
+                                </button>
                         </div>
                     </div>
                 </div>
@@ -1336,7 +1769,23 @@ export default function App() {
                                                 <td className="py-3 px-3 text-center">
                                                     <div className="flex items-center justify-center space-x-1.5">
                                                         <button
-                                                            onClick={() => setViewingPo(po)}
+                                                            onClick={async () => {
+                                                                // If this PO came from backend (id like 'BPO-123'), fetch fresh details
+                                                                if (typeof po.id === 'string' && po.id.startsWith('BPO-')) {
+                                                                    const numericId = parseInt(po.id.replace('BPO-', ''), 10);
+                                                                    try {
+                                                                        const resp = await fetch(`${API_BASE}/${numericId}`);
+                                                                        if (resp.ok) {
+                                                                            const serverPo = await resp.json();
+                                                                            setViewingPo(mapApiPoToUi(serverPo));
+                                                                            return;
+                                                                        }
+                                                                    } catch (err) {
+                                                                        console.warn('Failed to fetch PO details from server', err);
+                                                                    }
+                                                                }
+                                                                setViewingPo(po);
+                                                            }}
                                                             title="View & Print PO Voucher"
                                                             className="p-1 rounded text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 transition"
                                                         >

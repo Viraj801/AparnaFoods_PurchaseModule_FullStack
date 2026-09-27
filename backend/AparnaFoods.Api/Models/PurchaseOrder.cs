@@ -73,6 +73,10 @@ namespace AparnaFoods.Api.Models
         [Column("company")]
         public string? Company { get; set; }
 
+        [MaxLength(50)]
+        [Column("status")]
+        public string Status { get; set; } = "Pending";
+
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

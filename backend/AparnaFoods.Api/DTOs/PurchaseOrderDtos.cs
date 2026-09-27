@@ -12,7 +12,8 @@ namespace AparnaFoods.Api.DTOs
     public class CreatePurchaseOrderDto
     {
         public string PoNumber { get; set; } = string.Empty;
-        public DateOnly PoDate { get; set; }
+        // Use string for incoming dates from frontend (ISO 'yyyy-MM-dd') and parse in controller
+        public string PoDate { get; set; } = string.Empty;
         public string? PartyName { get; set; }
         public string? PurchasedBy { get; set; }
         public string? Broker { get; set; }
@@ -27,6 +28,8 @@ namespace AparnaFoods.Api.DTOs
         public string? FarmerName { get; set; }
         public string? MobileNumber { get; set; }
         public string? Company { get; set; }
+        // Optional status provided by frontend (e.g. "Pending", "Verified", "Processed")
+        public string? Status { get; set; } = "Pending";
         public List<CreatePurchaseOrderItemDto> Items { get; set; } = new();
     }
 

@@ -11,11 +11,25 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // 2. Allow CORS for React development clients
 builder.Services.AddCors(options =>
 {
+    // In development allow the common dev origins and also 127.0.0.1
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:5173")
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        policy.WithOrigins(
+                "http://localhost:7301",
+                "http://localhost:5173",
+                "http://127.0.0.1:3000",
+                "http://127.0.0.1:7301",
+                "https://localhost:3000",
+                "https://127.0.0.1:3000"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+
+    // Also register a permissive policy for development convenience
+    options.AddPolicy("AllowAnyDev", policy =>
+    {
+        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
     });
 });
 
@@ -31,7 +45,15 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseCors("AllowReactApp");
+// Use a permissive CORS policy in Development to avoid origin issues when using localhost vs 127.0.0.1
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors("AllowAnyDev");
+}
+else
+{
+    app.UseCors("AllowReactApp");
+}
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();

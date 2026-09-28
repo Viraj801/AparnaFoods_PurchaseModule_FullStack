@@ -71,21 +71,15 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+
+app.UseSwagger();
+app.UseSwaggerUI();
 
 // Use a permissive CORS policy in Development to avoid origin issues when using localhost vs 127.0.0.1
-if (app.Environment.IsDevelopment())
-{
-    app.UseCors("AllowAnyDev");
-}
-else
-{
-    app.UseCors("AllowReactApp");
-}
+
+ app.UseCors("AllowAnyDev");
+ app.UseCors("AllowReactApp");
+
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();

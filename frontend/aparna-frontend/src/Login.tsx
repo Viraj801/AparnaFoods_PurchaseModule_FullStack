@@ -10,7 +10,7 @@ export default function Login() {
         e.preventDefault();
         setError(null);
         try {
-            const res = await fetch('https://aparnafoodspurchasemodule20260928170409-c3c6gjfcachzcjhp.indiasouthcentral-01.azurewebsites.net/auth/login', {
+            const res = await fetch('https://aparnafoodspurchasemodule20260928170409-c3c6gjfcachzcjhp.indiasouthcentral-01.azurewebsites.net/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })

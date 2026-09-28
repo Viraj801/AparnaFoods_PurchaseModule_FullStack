@@ -187,9 +187,9 @@ export default function App() {
             id: Date.now(),
             variantName: 'CREAMY SELLA 2ND WAND 50KG',
             itemType: 'Rice',
-            bags: 100,
-            weight: 50.00,
-            rate: 3850
+            bags: 0,
+            weight: 0.00,
+            rate: 0
         }
     ]);
     const [selectedPoToEdit, setSelectedPoToEdit] = useState('');
@@ -1852,8 +1852,6 @@ export default function App() {
                     </div>
                 )}
             </main>
-
-            { }
             {viewingPo && (
                 <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
                     <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full p-6 relative max-h-[90vh] overflow-y-auto print:p-0 print:shadow-none">

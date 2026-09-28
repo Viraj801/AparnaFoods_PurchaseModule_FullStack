@@ -226,6 +226,9 @@ export default function App() {
             farmerName: po.farmerName || '',
             mobileNumber: po.mobileNumber || '',
             company: po.company || 'Aparna Foods Ltd.',
+            tdnNumber: po.tdnNumber || '',
+            truckNumber: po.truckNumber || '',
+            truckDateTime: po.truckDateTime ? po.truckDateTime.slice(0, 16) : '',
             status: po.status || 'Pending'
         });
 
@@ -239,7 +242,6 @@ export default function App() {
         })));
 
         setEditingPoId(po.id);
-        setActiveTab('entry');
         showToast(`Loaded ${po.poNumber} for editing.`);
     };
 
@@ -346,6 +348,9 @@ export default function App() {
             farmerName: po.farmerName,
             mobileNumber: po.mobileNumber,
             company: po.company,
+            tdnNumber: po.tdnNumber,
+            truckNumber: po.truckNumber,
+            truckDateTime: po.truckDateTime ? po.truckDateTime.slice(0, 16) : '',
             status: po.status || 'Pending',
             items,
             totalBags,
@@ -374,6 +379,9 @@ export default function App() {
             farmerName: uiPo.farmerName,
             mobileNumber: uiPo.mobileNumber,
             company: uiPo.company,
+            tdnNumber: uiPo.tdnNumber,
+            truckNumber: uiPo.truckNumber,
+            truckDateTime: uiPo.truckDateTime || null,
             items: (uiPo.items || []).map(it => ({
                 variantName: it.variantName,
                 itemType: it.itemType,
@@ -479,6 +487,9 @@ export default function App() {
             farmerName: '',
             mobileNumber: '',
             company: 'Aparna Foods Ltd.',
+            tdnNumber: '',
+            truckNumber: '',
+            truckDateTime: '',
             status: 'Pending'
         });
         setItems([
@@ -523,6 +534,9 @@ export default function App() {
             farmerName: formData.farmerName,
             mobileNumber: formData.mobileNumber,
             company: formData.company,
+            tdnNumber: formData.tdnNumber,
+            truckNumber: formData.truckNumber,
+            truckDateTime: formData.truckDateTime || null,
             items: calculatedItems.map(it => ({
                 variantName: it.variantName,
                 itemType: it.itemType,
@@ -564,40 +578,37 @@ export default function App() {
                 setPoList(prev => [uiPo, ...prev]);
                 showToast(`Purchase Order ${uiPo.poNumber} saved to server.`);
             } catch (err) {
-                // fallback local save/update
-                if (editingPoId) {
-                    // update local entry
-                    setPoList(prev => prev.map(p => p.id === editingPoId ? ({ ...p, ...formData, items: calculatedItems, totalBags: totals.bags, totalWeight: Number(totals.weight.toFixed(2)), totalAmount: Number(totals.amount.toFixed(2)) }) : p));
-                    showToast(`Purchase Order ${formData.poNumber} updated locally (server unavailable).`);
-                    setEditingPoId(null);
-                } else {
-                    const newPO = {
-                        id: `PO-${Date.now().toString().slice(-4)}`,
-                        ...formData,
-                        brokerage: Number(formData.brokerage) || 0,
-                        items: calculatedItems,
-                        totalBags: totals.bags,
-                        totalWeight: Number(totals.weight.toFixed(2)),
-                        totalAmount: Number(totals.amount.toFixed(2))
-                    };
-                    setPoList(prev => [newPO, ...prev]);
-                    showToast(`Purchase Order ${newPO.poNumber} created locally (server unavailable).`);
-                }
+                // On error, do NOT add or update local history. Keep the form state so user can retry.
+                console.error('Save failed:', err);
+                showToast('Could not save to server. Please try again.');
             }
         })();
 
-        // Auto advance PO number for next entry
-        const nextNum = 70 + poList.length + 2;
-        setFormData(prev => ({
-            ...prev,
-            poNumber: `PO/26-27/00${nextNum}`,
-            party: '',
-            broker: '',
-            farmerName: '',
-            mobileNumber: '',
-            village: '',
-            remarks: ''
-        }));
+        if (!editingPoId) {
+            // Auto advance PO number and reset the form for the next entry
+            const nextNum = 70 + poList.length + 2;
+            setFormData(prev => ({
+                ...prev,
+                poNumber: `PO/26-27/00${nextNum}`,
+                party: '',
+                broker: '',
+                farmerName: '',
+                mobileNumber: '',
+                village: '',
+                remarks: '',
+                tdnNumber: '',
+                truckNumber: '',
+                truckDateTime: ''
+            }));
+            setItems([{
+                id: Date.now(),
+                variantName: 'CREAMY SELLA 2ND WAND 50KG',
+                itemType: 'Rice',
+                bags: 0,
+                weight: 0,
+                rate: 0
+            }]);
+        }
     };
 
     const handleDeletePO = (id) => {
@@ -682,7 +693,7 @@ export default function App() {
                 {/* TAB: PROCESS PURCHASE ORDERS                             */}
                 {/* ========================================================= */}
                 {activeTab === 'process' && (
-                    <div className="space-y-5">
+                    <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
                         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-2 border-b border-slate-200">
                             <div>
                                 <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
@@ -886,7 +897,7 @@ export default function App() {
                 {/* TAB: UPDATE PURCHASE ORDERS                             */}
                 {/* ========================================================= */}
                 {activeTab === 'update' && (
-                    <div className="space-y-5">
+                    <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
                         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-2 border-b border-slate-200">
                             <div>
                                 <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
@@ -911,7 +922,7 @@ export default function App() {
                                     onClick={() => selectedPoToEdit ? loadPoForEdit(selectedPoToEdit) : showToast('Please choose a PO to load.')}
                                     className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-700 rounded hover:bg-emerald-800 transition"
                                 >
-                                    Load into Entry
+                                    Load PO Details
                                 </button>
                             </div>
                         </div>
@@ -919,7 +930,7 @@ export default function App() {
                 )}
 
             {/* Top Header */}
-            <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+            <header className="order-first bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         <div className="flex items-center space-x-3">
@@ -935,7 +946,7 @@ export default function App() {
                                         Purchase Module AF
                                     </span>
                                 </div>
-                                <p className="text-xs text-slate-500">Milling & Procurement ERP • Google Sheets Synchronizer</p>
+                                <p className="text-xs text-slate-500">Milling & Procurement ERP</p>
                             </div>
                         </div>
 
@@ -1016,16 +1027,18 @@ export default function App() {
                 {/* ========================================================= */}
                 {/* TAB 1: PURCHASE ORDER ENTRY FORM (Spreadsheet Mirror)       */}
                 {/* ========================================================= */}
-                {activeTab === 'entry' && (
+                {(activeTab === 'entry' || (activeTab === 'update' && editingPoId)) && (
                     <div className="space-y-6">
                         <div className="flex flex-col md:flex-row md:items-center justify-between pb-2 border-b border-slate-200">
                             <div>
                                 <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                                     <FileText className="w-5 h-5 text-emerald-600" />
-                                    New Purchase Order Entry
+                                    {editingPoId ? 'Update Purchase Order' : 'New Purchase Order Entry'}
                                 </h2>
                                 <p className="text-xs text-slate-500 mt-0.5">
-                                    Follows the exact layout & grid structure of the Aparna Foods Purchase Module sheet.
+                                    {editingPoId
+                                        ? 'Edit the loaded purchase order and save your changes.'
+                                        : 'Follows the exact layout & grid structure of the Aparna Foods Purchase Module sheet.'}
                                 </p>
                             </div>
                             <div className="flex items-center gap-2 mt-3 md:mt-0">
@@ -1292,6 +1305,64 @@ export default function App() {
                                 </div>
                             </div>
 
+                            <div className="bg-white rounded-lg border border-slate-300 shadow-sm overflow-hidden">
+                                <div className="bg-sky-800 text-white px-4 py-2.5 flex items-center gap-2">
+                                    <Truck className="w-4 h-4" />
+                                    <span className="font-bold text-sm tracking-wide">Truck Details</span>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4">
+                                    <div>
+                                        <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1" htmlFor="tdn-number">
+                                            TDN Number
+                                        </label>
+                                        <input
+                                            id="tdn-number"
+                                            type="text"
+                                            value={formData.tdnNumber}
+                                            onChange={(e) => setFormData({ ...formData, tdnNumber: e.target.value })}
+                                            className="w-full text-xs px-2.5 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-emerald-500 outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1" htmlFor="truck-number">
+                                            Truck Number
+                                        </label>
+                                        <input
+                                            id="truck-number"
+                                            type="text"
+                                            value={formData.truckNumber}
+                                            onChange={(e) => setFormData({ ...formData, truckNumber: e.target.value })}
+                                            className="w-full text-xs px-2.5 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-emerald-500 outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1" htmlFor="truck-party">
+                                            Party
+                                        </label>
+                                        <input
+                                            id="truck-party"
+                                            type="text"
+                                            readOnly
+                                            value={formData.party}
+                                            placeholder="Enter party in order header"
+                                            className="w-full text-xs px-2.5 py-2 border border-slate-300 rounded bg-slate-50 text-slate-600"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1" htmlFor="truck-date-time">
+                                            Date &amp; Time
+                                        </label>
+                                        <input
+                                            id="truck-date-time"
+                                            type="datetime-local"
+                                            value={formData.truckDateTime}
+                                            onChange={(e) => setFormData({ ...formData, truckDateTime: e.target.value })}
+                                            className="w-full text-xs px-2.5 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-emerald-500 outline-none"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
                             { }
                             <div className="bg-white rounded-lg border border-slate-300 shadow-sm overflow-hidden">
                                 <div className="bg-emerald-800 text-white px-4 py-2.5 flex items-center justify-between">
@@ -1435,9 +1506,7 @@ export default function App() {
                                                 <td className="py-3 px-3 text-right font-mono text-emerald-900 text-sm">
                                                     {totals.weight.toFixed(2)} Qtl
                                                 </td>
-                                                <td className="py-3 px-3 text-right text-slate-500 text-[11px]">
-                                                    Avg: {totals.weight > 0 ? (totals.amount / totals.weight).toFixed(2) : '0.00'} /Qtl
-                                                </td>
+                                                <td className="py-3 px-3"></td>
                                                 <td className="py-3 px-3 text-right font-mono text-sm text-emerald-950 bg-amber-200">
                                                     {formatINR(totals.amount)}
                                                 </td>
@@ -1469,7 +1538,7 @@ export default function App() {
                                         className="flex-1 sm:flex-initial px-8 py-2.5 rounded-md font-bold text-xs text-white bg-emerald-600 hover:bg-emerald-700 shadow-md transition flex items-center justify-center space-x-2"
                                     >
                                         <PlusCircle className="w-4 h-4" />
-                                        <span>Save Purchase Order</span>
+                                        <span>{editingPoId ? 'Update Purchase Order' : 'Save Purchase Order'}</span>
                                     </button>
                                 </div>
                             </div>

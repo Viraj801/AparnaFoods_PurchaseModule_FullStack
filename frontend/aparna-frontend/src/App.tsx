@@ -136,9 +136,9 @@ export default function App() {
     if (!token) {
         return <Login />;
     }
-     //https://127.0.0.1:7301/api/PurchaseOrders
 
-    const API_BASE = 'https://127.0.0.1:7301/api/purchaseorders';
+
+    const API_BASE = 'https://aparnafoodspurchasemodule20260928170409-c3c6gjfcachzcjhp.indiasouthcentral-01.azurewebsites.net/api/purchaseorders';
     // helper to attach Authorization header from localStorage token
     const authFetch = async (input, init = {}) => {
         const token = typeof window !== 'undefined' ? localStorage.getItem('af_token') : null;

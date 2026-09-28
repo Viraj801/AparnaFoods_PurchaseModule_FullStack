@@ -17,16 +17,9 @@ builder.Services.AddCors(options =>
     // In development allow the common dev origins and also 127.0.0.1
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins(
-                "http://localhost:7301",
-                "http://localhost:5173",
-                "http://127.0.0.1:3000",
-                "http://127.0.0.1:7301",
-                "https://localhost:3000",
-                "https://127.0.0.1:3000"
-            )
-            .AllowAnyHeader()
-            .AllowAnyMethod();
+        policy.AllowAnyOrigin()   // <-- Allows all domains
+         .AllowAnyHeader()
+         .AllowAnyMethod();
     });
 
     // Also register a permissive policy for development convenience

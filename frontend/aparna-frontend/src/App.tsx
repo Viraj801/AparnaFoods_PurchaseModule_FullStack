@@ -1,31 +1,26 @@
 // @ts-nocheck
-import React, { useState, useMemo, useEffect } from 'react';
-import Login from './Login';
 import {
-    LayoutDashboard,
+    Building,
+    CheckCircle,
+    ChevronRight,
+    Eye,
     FileText,
     History,
-    PlusCircle,
-    Trash2,
-    Printer,
-    Download,
-    Search,
-    Filter,
-    CheckCircle,
-    AlertCircle,
-    TrendingUp,
-    Package,
-    Weight,
     IndianRupee,
-    Users,
-    Calendar,
-    Eye,
+    LayoutDashboard,
+    Package,
+    PlusCircle,
+    Printer,
     RefreshCw,
-    ChevronRight,
+    Search,
     Sparkles,
-    Building,
-    Truck
+    Trash2,
+    TrendingUp,
+    Users,
+    Weight
 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import Login from './Login';
 
 const VARIANT_PRESETS = [
     "CLASSIC 10KG * 4",
@@ -881,13 +876,13 @@ export default function App() {
                                 >
                                     Verify Order
                                 </button>
-                                <button
+                          {/*       <button
                                     onClick={() => processPo(selectedPoToProcess)}
                                     disabled={!selectedPoToProcess}
                                     className="px-4 py-2 text-sm font-semibold bg-emerald-700 text-white rounded hover:bg-emerald-800 disabled:opacity-50"
                                 >
                                     Mark as Processed
-                                </button>
+                                </button> */}
                             </div>
                         </div>
                     </div>
@@ -1301,64 +1296,6 @@ export default function App() {
                                                 className="w-full text-xs px-2.5 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-emerald-500 outline-none"
                                             />
                                         </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="bg-white rounded-lg border border-slate-300 shadow-sm overflow-hidden">
-                                <div className="bg-sky-800 text-white px-4 py-2.5 flex items-center gap-2">
-                                    <Truck className="w-4 h-4" />
-                                    <span className="font-bold text-sm tracking-wide">Truck Details</span>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4">
-                                    <div>
-                                        <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1" htmlFor="tdn-number">
-                                            TDN Number
-                                        </label>
-                                        <input
-                                            id="tdn-number"
-                                            type="text"
-                                            value={formData.tdnNumber}
-                                            onChange={(e) => setFormData({ ...formData, tdnNumber: e.target.value })}
-                                            className="w-full text-xs px-2.5 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-emerald-500 outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1" htmlFor="truck-number">
-                                            Truck Number
-                                        </label>
-                                        <input
-                                            id="truck-number"
-                                            type="text"
-                                            value={formData.truckNumber}
-                                            onChange={(e) => setFormData({ ...formData, truckNumber: e.target.value })}
-                                            className="w-full text-xs px-2.5 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-emerald-500 outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1" htmlFor="truck-party">
-                                            Party
-                                        </label>
-                                        <input
-                                            id="truck-party"
-                                            type="text"
-                                            readOnly
-                                            value={formData.party}
-                                            placeholder="Enter party in order header"
-                                            className="w-full text-xs px-2.5 py-2 border border-slate-300 rounded bg-slate-50 text-slate-600"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1" htmlFor="truck-date-time">
-                                            Date &amp; Time
-                                        </label>
-                                        <input
-                                            id="truck-date-time"
-                                            type="datetime-local"
-                                            value={formData.truckDateTime}
-                                            onChange={(e) => setFormData({ ...formData, truckDateTime: e.target.value })}
-                                            className="w-full text-xs px-2.5 py-2 border border-slate-300 rounded focus:ring-1 focus:ring-emerald-500 outline-none"
-                                        />
                                     </div>
                                 </div>
                             </div>

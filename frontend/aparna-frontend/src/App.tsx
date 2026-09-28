@@ -947,6 +947,18 @@ export default function App() {
 
                         {/* Navigation Tabs */}
                         <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+
+                            <button
+                                onClick={() => setActiveTab('dashboard')}
+                                className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition ${activeTab === 'dashboard'
+                                    ? 'bg-emerald-700 text-white shadow-sm'
+                                    : 'text-slate-600 hover:text-slate-900'
+                                    }`}
+                            >
+                                <LayoutDashboard className="w-4 h-4" />
+                                <span>Analytics Dashboard</span>
+                            </button>
+
                             <button
                                 onClick={() => setActiveTab('entry')}
                                 className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition ${activeTab === 'entry'
@@ -959,16 +971,26 @@ export default function App() {
                             </button>
 
                             <button
-                                onClick={() => setActiveTab('dashboard')}
-                                className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition ${activeTab === 'dashboard'
-                                        ? 'bg-emerald-700 text-white shadow-sm'
-                                        : 'text-slate-600 hover:text-slate-900'
+                                onClick={() => setActiveTab('update')}
+                                className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition ${activeTab === 'update'
+                                    ? 'bg-emerald-700 text-white shadow-sm'
+                                    : 'text-slate-600 hover:text-slate-900'
                                     }`}
                             >
-                                <LayoutDashboard className="w-4 h-4" />
-                                <span>Analytics Dashboard</span>
+                                <RefreshCw className="w-4 h-4" />
+                                <span>Update PO</span>
                             </button>
-
+                            {/* New: PO Process & Update actions in the nav */}
+                            <button
+                                onClick={() => setActiveTab('process')}
+                                className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition ${activeTab === 'process'
+                                    ? 'bg-emerald-700 text-white shadow-sm'
+                                    : 'text-slate-600 hover:text-slate-900'
+                                    }`}
+                            >
+                                <Sparkles className="w-4 h-4" />
+                                <span>Process PO</span>
+                            </button>
                                 <button
                                     onClick={() => setActiveTab('history')}
                                     className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition ${activeTab === 'history'
@@ -978,29 +1000,6 @@ export default function App() {
                                 >
                                     <History className="w-4 h-4" />
                                     <span>Order History ({poList.length})</span>
-                                </button>
-
-                                {/* New: PO Process & Update actions in the nav */}
-                                <button
-                                    onClick={() => setActiveTab('process')}
-                                    className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition ${activeTab === 'process'
-                                            ? 'bg-emerald-700 text-white shadow-sm'
-                                            : 'text-slate-600 hover:text-slate-900'
-                                        }`}
-                                >
-                                    <Sparkles className="w-4 h-4" />
-                                    <span>Process PO</span>
-                                </button>
-
-                                <button
-                                    onClick={() => setActiveTab('update')}
-                                    className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition ${activeTab === 'update'
-                                            ? 'bg-emerald-700 text-white shadow-sm'
-                                            : 'text-slate-600 hover:text-slate-900'
-                                        }`}
-                                >
-                                    <RefreshCw className="w-4 h-4" />
-                                    <span>Update PO</span>
                                 </button>
                         </div>
                         <div className="flex items-center space-x-3">
